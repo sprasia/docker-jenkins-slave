@@ -14,7 +14,7 @@ ADD https://raw.githubusercontent.com/jpetazzo/dind/master/wrapdocker /usr/local
 
 RUN apt-get -qqy update \
   # Phabricator arcanist
-  && apt-get install -y --no-install-recommends git curl php7.0-cli php7.0-curl \
+  && apt-get install -y --no-install-recommends git curl php7.0-cli php7.0-curl openssh-client \
   && mkdir -p /usr/local/share/phabricator \
   && git clone -b master --depth 1 https://github.com/phacility/libphutil.git /usr/local/share/phabricator/libphutil \
   && git clone -b master --depth 1 https://github.com/phacility/arcanist.git /usr/local/share/phabricator/arcanist \
