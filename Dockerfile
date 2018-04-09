@@ -1,39 +1,40 @@
-# The MIT License
-#
-#  Copyright (c) 2015-2017, CloudBees, Inc. and other Jenkins contributors
-#
-#  Permission is hereby granted, free of charge, to any person obtaining a copy
-#  of this software and associated documentation files (the "Software"), to deal
-#  in the Software without restriction, including without limitation the rights
-#  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-#  copies of the Software, and to permit persons to whom the Software is
-#  furnished to do so, subject to the following conditions:
-#
-#  The above copyright notice and this permission notice shall be included in
-#  all copies or substantial portions of the Software.
-#
-#  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-#  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-#  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-#  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-#  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-#  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-#  THE SOFTWARE.
-
-FROM openjdk:8-jdk
-MAINTAINER Oleg Nenashev <o.v.nenashev@gmail.com>
+FROM openjdk:8-jdk-slim-stretch
+MAINTAINER Willie Loyd Tandingan <n3v3rf411@gmail.com>
 
 ENV HOME /home/jenkins
-RUN groupadd -g 10000 jenkins
-RUN useradd -c "Jenkins user" -d $HOME -u 10000 -g 10000 -m jenkins
+RUN groupadd -g 1000 jenkins
+RUN useradd -c "Jenkins user" -d $HOME -u 1000 -g 1000 -m jenkins
 LABEL Description="This is a base image, which provides the Jenkins agent executable (slave.jar)" Vendor="Jenkins project" Version="3.19"
 
 ARG VERSION=3.19
 ARG AGENT_WORKDIR=/home/jenkins/agent
 
-RUN curl --create-dirs -sSLo /usr/share/jenkins/slave.jar https://repo.jenkins-ci.org/public/org/jenkins-ci/main/remoting/${VERSION}/remoting-${VERSION}.jar \
+# dind wrapper
+ADD https://raw.githubusercontent.com/jpetazzo/dind/master/wrapdocker /usr/local/bin/wrapdocker
+
+RUN apt-get -qqy update \
+  # Phabricator arcanist
+  && apt-get install -y --no-install-recommends git curl php7.0-cli php7.0-curl \
+  && mkdir -p /usr/local/share/phabricator \
+  && git clone -b master --depth 1 https://github.com/phacility/libphutil.git /usr/local/share/phabricator/libphutil \
+  && git clone -b master --depth 1 https://github.com/phacility/arcanist.git /usr/local/share/phabricator/arcanist \
+  && ln -fsn /usr/local/share/phabricator/arcanist/bin/arc /usr/local/bin/arc \
+  # Docker
+  && apt-get install -y --no-install-recommends apt-transport-https \
+                                                ca-certificates \
+                                                curl \
+                                                gnupg2 \
+                                                software-properties-common \
+  && echo "deb [arch=amd64] https://download.docker.com/linux/debian stretch stable" > /etc/apt/sources.list.d/docker.list \
+  && curl -fsSL https://download.docker.com/linux/debian/gpg | apt-key add - \
+  && apt-get -qqy update \
+  && apt-get install -y --no-install-recommends docker-ce aufs-tools \
+  && chmod +x /usr/local/bin/wrapdocker \
+  # Remoting
+  && curl --create-dirs -sSLo /usr/share/jenkins/slave.jar https://repo.jenkins-ci.org/public/org/jenkins-ci/main/remoting/${VERSION}/remoting-${VERSION}.jar \
   && chmod 755 /usr/share/jenkins \
-  && chmod 644 /usr/share/jenkins/slave.jar
+  && chmod 644 /usr/share/jenkins/slave.jar \
+  && rm -rf /var/lib/apt/lists/*
 
 USER jenkins
 ENV AGENT_WORKDIR=${AGENT_WORKDIR}
