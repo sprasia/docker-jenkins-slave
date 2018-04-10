@@ -1,0 +1,27 @@
+#!/usr/bin/env sh
+
+# Environment variables :
+# * JENKINS_JNLP_URL : alternate jenkins URL
+# * JENKINS_AGENT_WORKDIR : agent work directory, if not set by optional parameter -workDir
+
+if [ $# -eq 1 ]; then
+
+	# if `docker run` only has one arguments, we assume user is running alternate command like `bash` to inspect the image
+	exec "$@"
+
+else
+
+	if [ -n "$JENKINS_JNLP_URL" ]; then
+		JNLP_URL="-jnlpUrl $JENKINS_JNLP_URL"
+	fi
+
+	if [ -n "$JENKINS_AGENT_WORKDIR" ]; then
+        AGENT_WORKDIR="-workDir $JENKINS_AGENT_WORKDIR"
+    fi
+
+    JNLP_PROTOCOL_OPTS="-Dorg.jenkinsci.remoting.engine.JnlpProtocol3.disabled=true"
+
+    echo "$AGENT_WORKDIR $JNLP_URL"
+
+	exec java $JAVA_OPTS $JNLP_PROTOCOL_OPTS -jar /usr/share/jenkins/slave.jar $AGENT_WORKDIR $JNLP_URL "$@"
+fi
