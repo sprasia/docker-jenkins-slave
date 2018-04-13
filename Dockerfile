@@ -2,15 +2,20 @@ FROM openjdk:8-jdk-slim-stretch
 MAINTAINER Willie Loyd Tandingan <n3v3rf411@gmail.com>
 
 ENV HOME /home/jenkins
-RUN groupadd -g 1000 jenkins
-RUN useradd -c "Jenkins user" -d $HOME -u 1000 -g 1000 -m jenkins
+
+# 994 below must match with the docker group id in the host system
+RUN groupadd -g 1000 jenkins \
+  && useradd -c "Jenkins user" -d $HOME -u 1000 -g 1000 -m jenkins \
+  && groupadd -g 131 dockerubuntumate \
+  && usermod -aG dockerubuntumate jenkins \
+  && groupadd -g 994 dockerami \
+  && usermod -aG dockerami jenkins
+
+
 LABEL Description="This is a base image, which provides the Jenkins agent executable (slave.jar)" Vendor="Jenkins project" Version="3.19"
 
 ARG VERSION=3.19
 ARG AGENT_WORKDIR=/home/jenkins/agent
-
-# dind wrapper
-ADD https://raw.githubusercontent.com/jpetazzo/dind/master/wrapdocker /usr/local/bin/wrapdocker
 
 RUN apt-get -qqy update \
   # Phabricator arcanist
@@ -29,12 +34,12 @@ RUN apt-get -qqy update \
   && curl -fsSL https://download.docker.com/linux/debian/gpg | apt-key add - \
   && apt-get -qqy update \
   && apt-get install -y --no-install-recommends docker-ce aufs-tools \
-  && chmod +x /usr/local/bin/wrapdocker \
   # Remoting
   && curl --create-dirs -sSLo /usr/share/jenkins/slave.jar https://repo.jenkins-ci.org/public/org/jenkins-ci/main/remoting/${VERSION}/remoting-${VERSION}.jar \
   && chmod 755 /usr/share/jenkins \
   && chmod 644 /usr/share/jenkins/slave.jar \
   && rm -rf /var/lib/apt/lists/*
+
 
 USER jenkins
 ENV AGENT_WORKDIR=${AGENT_WORKDIR}
