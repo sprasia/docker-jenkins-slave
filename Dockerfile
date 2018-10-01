@@ -12,10 +12,10 @@ RUN groupadd -g 1000 jenkins \
   && usermod -aG dockerami jenkins
 
 
-LABEL Description="This is a base image, which provides the Jenkins agent executable (slave.jar)" Vendor="Jenkins project" Version="3.19"
-
-ARG VERSION=3.19
+ARG VERSION=3.27
 ARG AGENT_WORKDIR=/home/jenkins/agent
+
+ENV KUBE_LATEST_VERSION="v1.12.0"
 
 RUN apt-get -qqy update \
   # Phabricator arcanist
@@ -38,6 +38,9 @@ RUN apt-get -qqy update \
   && curl --create-dirs -sSLo /usr/share/jenkins/slave.jar https://repo.jenkins-ci.org/public/org/jenkins-ci/main/remoting/${VERSION}/remoting-${VERSION}.jar \
   && chmod 755 /usr/share/jenkins \
   && chmod 644 /usr/share/jenkins/slave.jar \
+  # Kubectl
+  && curl -L https://storage.googleapis.com/kubernetes-release/release/${KUBE_LATEST_VERSION}/bin/linux/amd64/kubectl -o /usr/local/bin/kubectl \
+  && chmod +x /usr/local/bin/kubectl \
   && rm -rf /var/lib/apt/lists/*
 
 
@@ -51,3 +54,4 @@ WORKDIR /home/jenkins
 
 COPY jenkins-slave /usr/local/bin/jenkins-slave
 ENTRYPOINT ["jenkins-slave"]
+
